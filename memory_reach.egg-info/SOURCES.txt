@@ -1,0 +1,10 @@
+LICENSE
+README.md
+pyproject.toml
+memory_reach/__init__.py
+memory_reach/cli.py
+memory_reach.egg-info/PKG-INFO
+memory_reach.egg-info/SOURCES.txt
+memory_reach.egg-info/dependency_links.txt
+memory_reach.egg-info/entry_points.txt
+memory_reach.egg-info/top_level.txt

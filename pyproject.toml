@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "memory-reach"
+version = "0.1.0"
+description = "Scaffolding that gives AI agents structured long-term and project memory"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Lao yu" }]
+license = { text = "MIT" }
+dependencies = []
+
+[project.scripts]
+memory-reach = "memory_reach.cli:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["memory_reach*"]
