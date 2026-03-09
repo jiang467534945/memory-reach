@@ -75,6 +75,43 @@ def project_slug(name: str) -> str:
     return slug or "project"
 
 
+def detect_project(base: Path, text: str) -> str | None:
+    projects_dir = base / "projects"
+    if not projects_dir.exists():
+        return None
+
+    haystack = text.lower()
+    haystack_normalized = haystack.replace("-", " ").replace("_", " ")
+    candidates: list[tuple[int, str]] = []
+    for path in projects_dir.glob("*.md"):
+        slug = path.stem.lower()
+        slug_spaced = slug.replace("-", " ").replace("_", " ")
+        score = 0
+        if slug and slug in haystack:
+            score += 3
+        if slug_spaced and slug_spaced in haystack_normalized:
+            score += 3
+        try:
+            body = path.read_text(encoding="utf-8", errors="ignore").lower()
+        except Exception:
+            body = ""
+        title_match = re.search(r"^#\s+(.+)$", body, flags=re.M)
+        if title_match:
+            title = title_match.group(1).strip().lower()
+            title_spaced = title.replace("-", " ").replace("_", " ")
+            if title and title in haystack:
+                score += 4
+            if title_spaced and title_spaced in haystack_normalized:
+                score += 4
+        if score > 0:
+            candidates.append((score, slug))
+
+    if not candidates:
+        return None
+    candidates.sort(key=lambda x: (-x[0], x[1]))
+    return candidates[0][1]
+
+
 def ensure_file(dst: Path, src: Path) -> None:
     if not dst.exists():
         dst.parent.mkdir(parents=True, exist_ok=True)
@@ -102,13 +139,38 @@ def read_json_input(value: str | None) -> dict:
     return json.loads(text)
 
 
-def append_section(path: Path, heading: str, lines: list[str]) -> None:
+def append_section(path: Path, heading: str, lines: list[str]) -> bool:
     path.parent.mkdir(parents=True, exist_ok=True)
     existing = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
-    block = heading + "\n" + "\n".join(lines).rstrip() + "\n"
+    if heading in existing:
+        return False
+
+    deduped_lines: list[str] = []
+    for line in lines:
+        if line not in existing and line not in deduped_lines:
+            deduped_lines.append(line)
+    if not deduped_lines:
+        return False
+
+    block = heading + "\n" + "\n".join(deduped_lines).rstrip() + "\n"
     if existing and not existing.endswith("\n"):
         existing += "\n"
     path.write_text(existing + ("\n" if existing else "") + block, encoding="utf-8")
+    return True
+
+
+def conflict_candidates(existing_text: str, new_lines: list[str]) -> list[str]:
+    existing_low = existing_text.lower()
+    results: list[str] = []
+    for line in new_lines:
+        low = line.lower()
+        if low in existing_low:
+            continue
+        if (" should " in low or " must " in low or " decision:" in low or low.startswith("- decision")) and (
+            " should " in existing_low or " must " in existing_low or "decision:" in existing_low
+        ):
+            results.append(f"- Conflict candidate: {line[2:] if line.startswith('- ') else line}")
+    return results[:3]
 
 
 def extract_bullets(text: str, limit: int = 5) -> list[str]:
@@ -325,18 +387,36 @@ def capture_session(base: Path, source: str | None, session_id: str | None = Non
         new_daily(base, stamp.strftime('%Y-%m-%d'))
 
     bullets = extract_bullets(text)
+    daily_written = False
     if bullets:
-        append_section(daily_path, f"## Captured Session {sid}", bullets)
+        daily_written = append_section(daily_path, f"## Captured Session {sid}", bullets) or daily_written
 
     structured = build_daily_summary(text)
     for section_name in ["Progress", "Decisions", "Risks", "Next"]:
         lines = structured.get(section_name, [])
         if lines:
-            append_section(daily_path, f"## {section_name} Update {sid}", lines)
+            daily_written = append_section(daily_path, f"## {section_name} Update {sid}", lines) or daily_written
+
+    project_match = detect_project(base, text)
+    project_written = False
+    project_path = None
+    if project_match:
+        project_path = base / "projects" / f"{project_match}.md"
+        project_lines: list[str] = []
+        for section_name in ["Progress", "Decisions", "Risks", "Next"]:
+            project_lines.extend(structured.get(section_name, []))
+        if project_lines:
+            existing_project = project_path.read_text(encoding="utf-8", errors="ignore") if project_path.exists() else ""
+            project_written = append_section(project_path, f"## Session Update {sid}", project_lines)
+            conflicts = conflict_candidates(existing_project, project_lines)
+            if conflicts:
+                append_section(project_path, f"## Conflict Candidates {sid}", conflicts)
 
     print(f"Captured session: {archive}")
-    if bullets:
+    if daily_written:
         print(f"Updated daily note: {daily_path}")
+    if project_written and project_path is not None:
+        print(f"Updated project memory: {project_path}")
     return 0
 
 
@@ -345,6 +425,32 @@ def capture_openclaw(base: Path, source: str | None) -> int:
     payload = read_json_input(source)
     session_id, rendered = render_openclaw_transcript(payload)
     return capture_session(base, rendered, session_id=session_id)
+
+
+def automate_openclaw(base: Path, source: str | None) -> int:
+    ensure_base(base)
+    payload = read_json_input(source)
+    session_id, rendered = render_openclaw_transcript(payload)
+
+    capture_rc = capture_session(base, rendered, session_id=session_id)
+    stamp = utc_today()
+    sync_rc = sync_day(base, stamp)
+
+    suggestions = suggest_items(rendered)
+    lines: list[str] = []
+    for section in ["Preferences", "Durable Decisions", "Long-term Constraints", "Do Not Store"]:
+        items = suggestions.get(section, [])
+        if items:
+            lines.append(f"### {section}")
+            lines.extend(items)
+            lines.append("")
+    suggest_path = base / "sessions" / "active" / f"{session_id}.suggestions.md"
+    suggest_path.parent.mkdir(parents=True, exist_ok=True)
+    suggest_path.write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
+
+    print(f"Automated OpenClaw flow complete: {session_id}")
+    print(f"Suggestions written: {suggest_path}")
+    return 0 if capture_rc == 0 and sync_rc == 0 else 1
 
 
 def sync_day(base: Path, date_str: str | None = None) -> int:
@@ -489,6 +595,10 @@ def main() -> int:
     p_capture_oc.add_argument("source", nargs="?", default="-")
     p_capture_oc.add_argument("--path", default=".")
 
+    p_auto_oc = sub.add_parser("automate-openclaw", help="Run capture + sync + suggestion generation for an OpenClaw payload")
+    p_auto_oc.add_argument("source", nargs="?", default="-")
+    p_auto_oc.add_argument("--path", default=".")
+
     p_sync = sub.add_parser("sync-day", help="Sync archived sessions into a daily note")
     p_sync.add_argument("date", nargs="?", default=None)
     p_sync.add_argument("path", nargs="?", default=".")
@@ -511,6 +621,8 @@ def main() -> int:
         return capture_session(Path(args.path).expanduser().resolve(), args.source, args.session_id)
     if args.command == "capture-openclaw":
         return capture_openclaw(Path(args.path).expanduser().resolve(), args.source)
+    if args.command == "automate-openclaw":
+        return automate_openclaw(Path(args.path).expanduser().resolve(), args.source)
     if args.command == "sync-day":
         return sync_day(Path(args.path).expanduser().resolve(), args.date)
     if args.command == "suggest-memory":

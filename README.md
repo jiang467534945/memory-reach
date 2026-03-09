@@ -1,7 +1,7 @@
 <h1 align="center">🧠 Memory Reach</h1>
 
 <p align="center">
-  <strong>给你的 AI Agent 一键装上长期记忆、项目记忆和可检索记忆能力</strong>
+  <strong>Turn agent conversations into durable memory files — with structure, summaries, and runtime capture.</strong>
 </p>
 
 <p align="center">
@@ -10,195 +10,276 @@
 </p>
 
 <p align="center">
-  <a href="#快速上手">快速上手</a> · <a href="#它会做什么">它会做什么</a> · <a href="#doctor">Doctor</a> · <a href="#设计理念">设计理念</a>
+  <a href="#why-memory-reach">Why</a> ·
+  <a href="#what-it-does">What it does</a> ·
+  <a href="#quickstart">Quickstart</a> ·
+  <a href="#openclaw-integration">OpenClaw</a> ·
+  <a href="#roadmap">Roadmap</a>
 </p>
 
 ---
 
-## 为什么需要 Memory Reach？
+## Why Memory Reach?
 
-AI Agent 已经能聊天、写代码、查资料——但你让它**长期记住项目和人**，它就开始混乱：
+Most AI agents can talk, search, and code.
+Very few can **remember the right things in the right place**.
 
-- "记住我的偏好" → **下次忘了**，新会话直接断片
-- "记住这个项目背景" → **记错地方**，临时内容混进长期记忆
-- "你是怎么知道这个的？" → **说不清来源**，记忆不可验证
-- "帮我延续上次的工作" → **找不到上下文**，只能重头再说
-- "别把敏感信息记进去" → **没有规则**，token/cookie 可能被误写入日志
+That creates the same failure pattern everywhere:
 
-**这些不是大模型不够聪明，而是缺少一层记忆基建。**
+- a useful preference gets lost in the next session
+- a project decision gets buried inside random chat logs
+- daily progress is mixed with long-term memory
+- sensitive content risks being written into durable notes
+- nobody can explain **why** a memory exists or where it came from
 
-Memory Reach 做的事情很简单：
+**Memory Reach** is a lightweight memory infrastructure layer for agents.
+It does not try to be a giant memory platform.
+It gives you a clean, inspectable workflow for turning runtime conversations into structured files.
 
-- 帮你建立标准记忆目录结构
-- 区分长期记忆 / 项目记忆 / 每日日志 / 会话归档
-- 提供一套基础 doctor，检查“记忆是否可用、可写、可检索、是否混乱”
-- 给 Agent 一份统一的记忆使用规范
-
-**一句话安装：**
-
-```text
-帮我安装 Memory Reach：https://raw.githubusercontent.com/YOUR_NAME/memory-reach/main/docs/install.md
-```
-
-安装完之后，Agent 就不再只是“当前会话聪明”，而是开始具备**项目级连续性**。
+> The goal is not “more memory.”
+> The goal is **better memory hygiene**.
 
 ---
 
-## 快速上手
+## What it does
 
-复制这句话给你的 AI Agent（OpenClaw、Claude Code、Cursor 等）：
-
-```text
-帮我安装 Memory Reach：https://raw.githubusercontent.com/YOUR_NAME/memory-reach/main/docs/install.md
-```
-
-已安装过？更新也是一句话：
+### 1) Create a standard memory workspace
 
 ```text
-帮我更新 Memory Reach：https://raw.githubusercontent.com/YOUR_NAME/memory-reach/main/docs/update.md
+MEMORY.md
+projects/
+daily/
+sessions/archive/
+rules/
+.memory-reach.json
 ```
+
+### 2) Capture conversations into durable files
+
+- archive sessions into `sessions/archive/*.md`
+- summarize sessions into `daily/YYYY-MM-DD.md`
+- accept runtime-shaped payloads from OpenClaw
+
+### 3) Organize memory instead of dumping text
+
+- structured daily summaries:
+  - Progress
+  - Decisions
+  - Risks
+  - Next
+- structured long-term memory suggestions:
+  - Preferences
+  - Durable Decisions
+  - Long-term Constraints
+  - Do Not Store
+
+### 4) Keep memory inspectable
+
+- plain Markdown files
+- simple CLI
+- explicit rules
+- health checks with `doctor`
 
 ---
 
-## 它会做什么？
+## Current capabilities
 
-1. **初始化标准记忆目录**
-   - `MEMORY.md`：长期记忆
-   - `projects/`：项目记忆
-   - `daily/`：每日日志
-   - `sessions/`：会话归档
-   - `rules/`：记忆规则
+### Workspace / scaffold
+- `memory-reach init`
+- `memory-reach doctor`
+- `memory-reach new-project <name>`
+- `memory-reach new-daily`
 
-2. **安装一个轻量 CLI**
-   - `memory-reach init` 初始化目录
-   - `memory-reach doctor` 做健康检查
-   - `memory-reach new-project <name>` 生成项目记忆模板
-   - `memory-reach new-daily` 生成当天日志
-   - `memory-reach capture-session` 归档会话并写入 daily 摘要
-   - `memory-reach capture-openclaw` 接收 OpenClaw 风格 JSON 并落盘
-   - `memory-reach sync-day` 汇总当天会话归档
-   - `memory-reach suggest-memory` 提取长期记忆候选
+### Session / runtime capture
+- `memory-reach capture-session`
+- `memory-reach capture-openclaw`
+- `memory-reach automate-openclaw`
+- `memory-reach sync-day`
 
-3. **写入默认规则模板**
-   - 什么应该记
-   - 什么不该记
-   - 敏感信息不要怎么落盘
-
-4. **给 Agent 一份记忆使用规范**
-   - 什么时候写长期记忆
-   - 什么时候写 daily
-   - 什么时候只保留在会话里
+### Memory governance
+- structured daily summaries
+- structured long-term memory suggestions
+- basic sensitive-content scanning
 
 ---
 
-## 目录结构
+## Quickstart
 
-```text
-memory-reach/
-├── MEMORY.md
-├── projects/
-│   └── example-project.md
-├── daily/
-│   └── 2026-01-01.md
-├── sessions/
-│   ├── active/
-│   └── archive/
-├── rules/
-│   ├── memory-rules.md
-│   ├── privacy-rules.md
-│   └── retention.md
-└── .memory-reach.json
-```
-
----
-
-## Doctor
-
-运行：
+### Install
 
 ```bash
-memory-reach doctor
+pip install -e .
 ```
 
-示例输出：
+### Initialize a workspace
+
+```bash
+memory-reach init .
+```
+
+### Check health
+
+```bash
+memory-reach doctor .
+```
+
+### Create a project memory file
+
+```bash
+memory-reach new-project memory-reach .
+```
+
+### Create today's daily note
+
+```bash
+memory-reach new-daily 2026-03-09 .
+```
+
+### Capture a session transcript
+
+```bash
+memory-reach capture-session sample-session.txt --session-id demo-001 --path .
+```
+
+### Suggest long-term memory candidates
+
+```bash
+memory-reach suggest-memory sample-session.txt --path .
+```
+
+---
+
+## OpenClaw integration
+
+Memory Reach already includes a runtime-facing entrypoint for OpenClaw-style payloads:
+
+```bash
+memory-reach capture-openclaw payload.json --path /your/workspace
+```
+
+There is also a bridge example script:
+
+```bash
+python scripts/openclaw_capture.py /tmp/openclaw-session.json --workspace /your/workspace
+```
+
+Docs:
+
+- `docs/openclaw-hook.md`
+- `docs/openclaw-hook-example.md`
+
+### Expected payload shape
+
+```json
+{
+  "session_id": "telegram-group-20260309-001",
+  "meta": {
+    "channel": "telegram",
+    "chat_id": "-1003837441352",
+    "chat_type": "group",
+    "surface": "telegram",
+    "user": "Lao yu",
+    "started_at": "2026-03-09T10:40:00Z"
+  },
+  "messages": [
+    {"role": "user", "content": "Please make Memory Reach integrate runtime conversations."},
+    {"role": "assistant", "content": "Understood. v0.4 adds capture-openclaw for runtime-shaped payloads."}
+  ],
+  "summary": "Direction confirmed: Memory Reach must connect runtime conversation capture to durable files."
+}
+```
+
+---
+
+## Example output shape
+
+After capture, your workspace can evolve like this:
 
 ```text
-✅ MEMORY.md exists
-✅ projects/ exists
-✅ daily/ exists
-✅ sessions/archive/ exists
-✅ rules/memory-rules.md exists
-⚠️ Potential sensitive keys not detected (good)
-✅ basic structure healthy
+MEMORY.md
+projects/
+  example-project.md
+  memory-reach.md
+daily/
+  2026-03-09.md
+sessions/archive/
+  telegram-group-20260309-001.md
+rules/
+  memory-rules.md
+  privacy-rules.md
+  retention.md
 ```
 
-Doctor 第一版检查：
+And a daily note can contain structured updates like:
 
-- 必需目录是否存在
-- 核心模板是否存在
-- 目录是否可写
-- 是否检测到明显敏感字段（如 `sk-`, `xoxb-`, `ghp_`）
+```md
+## Progress Update demo-v52
+- We shipped v0.5.2 daily summary improvements.
 
----
+## Decisions Update demo-v52
+- Decision: daily summaries should group content into Progress, Decisions, Risks, and Next.
 
-## 设计理念
+## Risks Update demo-v52
+- Risk: raw transcript snippets can become noisy in daily notes.
 
-**Memory Reach 是脚手架，不是记忆平台。**
-
-它不负责替你的 Agent “聪明地决定一切”，它只负责把记忆这件事从混乱状态，变成一套：
-
-- 可初始化
-- 可分类
-- 可检索
-- 可检查
-- 可演进
-
-也就是说，它卖的不是“更多记忆”，而是：
-
-> **让 Agent 记得更对。**
+## Next Update demo-v52
+- Next: connect this structured summary flow to a real OpenClaw hook.
+```
 
 ---
 
-## 开发路线图
+## Why this project matters
 
-### v0.1
-- [x] 标准目录初始化
-- [x] doctor 基础检查
-- [x] 默认规则模板
-- [x] CLI 脚手架
+There are many tools for storing more text.
+There are far fewer tools for helping agents:
 
-### v0.2
-- [x] `new-project` 项目模板生成
-- [x] `new-daily` 每日日志生成
-- [x] doctor 增强（内容/文件数检查）
+- decide what belongs in daily vs long-term memory
+- preserve project continuity across sessions
+- keep memory files human-readable
+- connect runtime transcripts to durable notes
+- avoid storing secrets by accident
 
-### v0.3
-- [x] `capture-session` 会话归档 + daily 摘要
-- [x] `sync-day` 当日归档汇总
-- [x] `suggest-memory` 长期记忆候选建议
-- [x] doctor 增加 session archive 检查
+Memory Reach is designed as a **memory infrastructure layer** — not a black-box memory product.
 
-### v0.4
-- [x] `capture-openclaw` runtime-shaped JSON 接入
-- [x] `docs/openclaw-hook.md` 接入说明
-- [x] doctor 增加 runtime capture 检查
+---
 
-### v0.5.1
-- [x] `scripts/openclaw_capture.py` 示例桥接脚本
-- [x] `docs/openclaw-hook-example.md` 接线示例
+## Roadmap
 
-### v0.5.2
-- [x] daily 摘要结构化（Progress / Decisions / Risks / Next）
+### Done
+- [x] scaffolded memory workspace
+- [x] health checks (`doctor`)
+- [x] project and daily templates
+- [x] session archive flow
+- [x] OpenClaw-style runtime payload capture
+- [x] OpenClaw bridge example
+- [x] structured daily summaries
+- [x] structured long-term memory suggestions
 
-### v0.5.3
-- [x] `suggest-memory` 结构化输出（Preferences / Durable Decisions / Long-term Constraints / Do Not Store）
+### v0.6 target
+- [x] **project-level auto classification** (v0.6.2 minimal version)
+- [x] **more realistic hook automation** (v0.6.4 minimal version)
+- [x] **memory deduplication / conflict handling** (v0.6.3 minimal version)
 
-### v1.0
-- [ ] OpenClaw 真正的 hook 脚本/事件接线
-- [ ] Claude / Codex 兼容 payload 模板
-- [ ] 检索接口对接
-- [ ] 多 Agent 兼容模板
-- [ ] 更细的记忆质量检查
+### Later
+- [ ] Claude / Codex payload adapters
+- [ ] stronger retrieval integration
+- [ ] higher-quality summarization and memory ranking
+
+---
+
+## Design principle
+
+**Memory Reach is not a giant agent framework.**
+
+It is a small, composable layer that helps agents:
+
+- capture
+- summarize
+- classify
+- retain
+- audit
+
+If your agent already thinks well, Memory Reach helps it **remember more cleanly**.
 
 ---
 
