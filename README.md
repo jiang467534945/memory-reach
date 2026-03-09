@@ -72,6 +72,12 @@ Memory Reach 做的事情很简单：
 2. **安装一个轻量 CLI**
    - `memory-reach init` 初始化目录
    - `memory-reach doctor` 做健康检查
+   - `memory-reach new-project <name>` 生成项目记忆模板
+   - `memory-reach new-daily` 生成当天日志
+   - `memory-reach capture-session` 归档会话并写入 daily 摘要
+   - `memory-reach capture-openclaw` 接收 OpenClaw 风格 JSON 并落盘
+   - `memory-reach sync-day` 汇总当天会话归档
+   - `memory-reach suggest-memory` 提取长期记忆候选
 
 3. **写入默认规则模板**
    - 什么应该记
@@ -162,11 +168,24 @@ Doctor 第一版检查：
 - [x] CLI 脚手架
 
 ### v0.2
-- [ ] 敏感信息扫描增强
-- [ ] 项目模板生成
-- [ ] session 摘要模板
+- [x] `new-project` 项目模板生成
+- [x] `new-daily` 每日日志生成
+- [x] doctor 增强（内容/文件数检查）
+
+### v0.3
+- [x] `capture-session` 会话归档 + daily 摘要
+- [x] `sync-day` 当日归档汇总
+- [x] `suggest-memory` 长期记忆候选建议
+- [x] doctor 增加 session archive 检查
+
+### v0.4
+- [x] `capture-openclaw` runtime-shaped JSON 接入
+- [x] `docs/openclaw-hook.md` 接入说明
+- [x] doctor 增加 runtime capture 检查
 
 ### v1.0
+- [ ] OpenClaw 真正的 hook 脚本/事件接线
+- [ ] Claude / Codex 兼容 payload 模板
 - [ ] 检索接口对接
 - [ ] 多 Agent 兼容模板
 - [ ] 更细的记忆质量检查
