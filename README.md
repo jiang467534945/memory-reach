@@ -187,6 +187,12 @@ Doctor 第一版检查：
 - [x] `scripts/openclaw_capture.py` 示例桥接脚本
 - [x] `docs/openclaw-hook-example.md` 接线示例
 
+### v0.5.2
+- [x] daily 摘要结构化（Progress / Decisions / Risks / Next）
+
+### v0.5.3
+- [x] `suggest-memory` 结构化输出（Preferences / Durable Decisions / Long-term Constraints / Do Not Store）
+
 ### v1.0
 - [ ] OpenClaw 真正的 hook 脚本/事件接线
 - [ ] Claude / Codex 兼容 payload 模板

@@ -128,26 +128,87 @@ def extract_bullets(text: str, limit: int = 5) -> list[str]:
     return bullets
 
 
-def suggest_items(text: str, limit: int = 5) -> list[str]:
-    candidates = []
+def build_daily_summary(text: str) -> dict[str, list[str]]:
+    sections: dict[str, list[str]] = {
+        "Progress": [],
+        "Decisions": [],
+        "Risks": [],
+        "Next": [],
+    }
+
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        cleaned = re.sub(r"^[-*•\d.\)\s]+", "", line).strip()
+        low = cleaned.lower()
+        if len(cleaned) < 12:
+            continue
+        if low.startswith(("system:", "conversation info", "sender", "chat history")):
+            continue
+
+        if any(k in low for k in ["decision", "decided", "prefer", "must", "should", "direction"]):
+            sections["Decisions"].append(f"- {cleaned[:220]}")
+        elif any(k in low for k in ["risk", "issue", "bug", "fail", "error", "blocked"]):
+            sections["Risks"].append(f"- {cleaned[:220]}")
+        elif any(k in low for k in ["next", "todo", "follow up", "continue", "plan"]):
+            sections["Next"].append(f"- {cleaned[:220]}")
+        else:
+            sections["Progress"].append(f"- {cleaned[:220]}")
+
+    for key in sections:
+        deduped = []
+        seen = set()
+        for item in sections[key]:
+            if item not in seen:
+                seen.add(item)
+                deduped.append(item)
+        sections[key] = deduped[:4]
+    return sections
+
+
+def suggest_items(text: str, limit: int = 5) -> dict[str, list[str]]:
+    sections: dict[str, list[str]] = {
+        "Preferences": [],
+        "Durable Decisions": [],
+        "Long-term Constraints": [],
+        "Do Not Store": [],
+    }
+
     for raw in text.splitlines():
         line = raw.strip()
         if not line or len(line) < 18:
             continue
-        if any(token in line.lower() for token in ["decided", "decision", "prefer", "remember", "important", "always", "never"]):
-            candidates.append(f"- {line[:220]}")
-        if len(candidates) >= limit:
-            break
-    if candidates:
-        return candidates
+        low = line.lower()
+        item = f"- {line[:220]}"
 
-    counts: dict[str, int] = {}
-    for token in re.findall(r"[A-Za-z][A-Za-z0-9_-]{3,}", text.lower()):
-        if token in STOPWORDS:
-            continue
-        counts[token] = counts.get(token, 0) + 1
-    top = [w for w, c in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:limit] if c > 1]
-    return [f"- Candidate recurring topic: {w}" for w in top]
+        if any(k in low for k in ["prefer", "likes", "usually wants", "short updates", "style"]):
+            sections["Preferences"].append(item)
+        if any(k in low for k in ["decision", "decided", "we will", "ship", "use ", "must integrate"]):
+            sections["Durable Decisions"].append(item)
+        if any(k in low for k in ["must", "cannot", "should not", "constraint", "boundary", "requirement"]):
+            sections["Long-term Constraints"].append(item)
+        if any(k in low for k in ["secret", "cookie", "token", "api key", "do not store", "password"]):
+            sections["Do Not Store"].append(item)
+
+    if not any(sections.values()):
+        counts: dict[str, int] = {}
+        for token in re.findall(r"[A-Za-z][A-Za-z0-9_-]{3,}", text.lower()):
+            if token in STOPWORDS:
+                continue
+            counts[token] = counts.get(token, 0) + 1
+        top = [w for w, c in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:limit] if c > 1]
+        sections["Durable Decisions"] = [f"- Candidate recurring topic: {w}" for w in top]
+
+    for key in sections:
+        deduped = []
+        seen = set()
+        for item in sections[key]:
+            if item not in seen:
+                seen.add(item)
+                deduped.append(item)
+        sections[key] = deduped[:limit]
+    return sections
 
 
 def ensure_base(base: Path) -> None:
@@ -267,6 +328,12 @@ def capture_session(base: Path, source: str | None, session_id: str | None = Non
     if bullets:
         append_section(daily_path, f"## Captured Session {sid}", bullets)
 
+    structured = build_daily_summary(text)
+    for section_name in ["Progress", "Decisions", "Risks", "Next"]:
+        lines = structured.get(section_name, [])
+        if lines:
+            append_section(daily_path, f"## {section_name} Update {sid}", lines)
+
     print(f"Captured session: {archive}")
     if bullets:
         print(f"Updated daily note: {daily_path}")
@@ -309,11 +376,15 @@ def suggest_memory(base: Path, source: str | None) -> int:
 
     suggestions = suggest_items(text)
     print("Memory Suggestions\n")
-    if not suggestions:
-        print("- No strong long-term memory candidates found")
-        return 0
-    for item in suggestions:
-        print(item)
+    for section in ["Preferences", "Durable Decisions", "Long-term Constraints", "Do Not Store"]:
+        print(f"## {section}")
+        items = suggestions.get(section, [])
+        if items:
+            for item in items:
+                print(item)
+        else:
+            print("- None")
+        print()
     return 0
 
 
