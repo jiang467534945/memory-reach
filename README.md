@@ -183,6 +183,10 @@ Doctor 第一版检查：
 - [x] `docs/openclaw-hook.md` 接入说明
 - [x] doctor 增加 runtime capture 检查
 
+### v0.5.1
+- [x] `scripts/openclaw_capture.py` 示例桥接脚本
+- [x] `docs/openclaw-hook-example.md` 接线示例
+
 ### v1.0
 - [ ] OpenClaw 真正的 hook 脚本/事件接线
 - [ ] Claude / Codex 兼容 payload 模板
